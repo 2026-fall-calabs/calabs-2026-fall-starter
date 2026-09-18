@@ -24,8 +24,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Build and self-check Lab 1
-        run: make -C labs/lab1-datalab selftest
+      - name: Grade Lab 1 submission
+        run: make -C labs/lab1-datalab grade
 
   lab2-matrix:
     name: Lab 2 - MatrixLab (${{ matrix.os }})
