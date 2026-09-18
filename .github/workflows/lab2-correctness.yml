@@ -1,0 +1,45 @@
+name: Lab 2 correctness
+
+on:
+  push:
+    paths:
+      - ".github/workflows/lab2-correctness.yml"
+      - "labs/lab2-matrix/**"
+  pull_request:
+    paths:
+      - ".github/workflows/lab2-correctness.yml"
+      - "labs/lab2-matrix/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  correctness:
+    name: Required functions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: >-
+          cmake -S labs/lab2-matrix -B build/lab2
+          -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build/lab2 --parallel 2
+      - name: Framework self-tests
+        run: ctest --test-dir build/lab2 --output-on-failure
+      - name: Register reuse correctness
+        run: ./build/lab2/reg_reuse 6 12 24 48
+      - name: Loop order and cache block correctness
+        run: ./build/lab2/cache_part3 48 6
+      - name: Optimal correctness at all optimization levels
+        shell: bash
+        run: |
+          for level in 0 1 2 3; do
+            "./build/lab2/cache_part4_o${level}" 48 6
+          done

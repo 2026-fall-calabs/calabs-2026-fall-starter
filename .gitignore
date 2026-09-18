@@ -1,0 +1,46 @@
+# macOS and Windows metadata
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Editor-local files
+.idea/
+.vscode/*
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# CMake and other out-of-source build trees
+**/build/
+**/build-*/
+compile_commands.json
+CMakeUserPresets.json
+
+# Compiler and linker output
+*.d
+*.o
+*.obj
+*.a
+*.lib
+*.la
+*.lo
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+*.dSYM/
+*.pdb
+
+# Runtime and benchmark output
+**/results/
+/grader-results/
+*.err
+
+# Lab-specific generated executables
+/labs/lab1-datalab/btest
+/labs/lab1-datalab/btest.exe
