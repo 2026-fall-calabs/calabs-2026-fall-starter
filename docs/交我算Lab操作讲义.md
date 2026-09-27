@@ -463,11 +463,11 @@ CTest、`mkdir -p results` 和 `set -euo pipefail`。脚本已经进入 Lab 2 �
 
 ### 8.1 寄存器复用（README §8.2）
 
-> **题面待统一：** README §6.4 的“n 可被 6 整除”与 §8.2 的正式规模冲突，需教师统一后执行寄存器实验。 当前参考实现 `dgemm3` 在 `n=64` 时会输出 `INVALID`。
-> 下方忠实列出第 8.2 节命令，不代表这处冲突已解决；学生不要自行改动正式规模。
+寄存器实验要求 `n` 能被 6 整除，正式规模统一为 66、126、258、510、1026、2046，
+与 `reg_reuse` 的默认规模及 README 第 9.2 节的报告表格一致。
 
 ```bash
-srun --cpu-bind=cores ./build/reg_reuse 64 128 256 512 1024 2048 \
+srun --cpu-bind=cores ./build/reg_reuse 66 126 258 510 1026 2046 \
   2>&1 | tee results/register_reuse.txt
 ```
 
@@ -570,8 +570,9 @@ done
 bash scripts/run_all.sh mydata.txt
 ```
 
-结果位于 `labs/lab2-matrix/results/mydata.txt`。此脚本读取相同的 `build/`，但是使用程序
-默认参数：寄存器 66、126、258、510、1026、2046；Part 3 为 2000/10；Part 4 为 2040/60。
+结果位于 `labs/lab2-matrix/results/mydata.txt`。此脚本读取相同的 `build/`，使用程序默认参数。
+寄存器规模为 66、126、258、510、1026、2046，与正式实验相同；Part 3 的 n/b 为 2000/10，
+Part 4 为 2040/60，这两项仍与正式实验参数不同。
 它用于额外批量检查，不能替代前面按 README 第 8.2～8.6 节收集的正式数据。
 `scripts/submit.sh` 只是本地运行包装，不调用 `sbatch`，不要在登录节点运行实验脚本。
 
