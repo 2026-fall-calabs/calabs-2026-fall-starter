@@ -4,6 +4,7 @@
 
 - [学生上手教学 PPT](交我算平台Lab运行指南-学生版.pptx)
 - [操作讲义与可复制命令](交我算Lab操作讲义.md)
+- [Slurm 脚本与提交命令](../slurm/README.md)
 - [作业提交说明](作业提交说明.md)
 
 教程覆盖 SSH `config` 配置、平台免密证书、VS Code Remote-SSH、云盘获取与提交、

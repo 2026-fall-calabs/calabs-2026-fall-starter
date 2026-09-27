@@ -68,7 +68,10 @@ sudo apt install build-essential cmake git
 Using bundled portable cblas_dgemm reference backend
 ```
 
-如果出现 `/act/opt/intel/mkl`、`mkl_avx2`、`sbatch` 或 Tardis 相关错误，说明使用了旧框架，请重新下载课程提供的版本。
+如果构建过程仍引用 `/act/opt/intel/mkl`、`mkl_avx2` 或 Tardis，请确认使用的是当前框架，并在新的构建目录中重新配置。交我算上的 `sbatch` 是正常的作业提交命令。
+
+课程已提供与下文流程对应的 [Slurm 脚本](../../slurm/README.md)，覆盖小规模检查和各项正式实验。
+每份脚本在计算节点编译，默认申请 1 节点、1 进程、1 核、3 小时。批处理时从课程根目录提交。
 
 ## 4. 获取和检查框架
 
@@ -96,8 +99,8 @@ Using bundled portable cblas_dgemm reference backend
 ```bash
 cd labs/lab2-matrix
 cmake -S . -B build
-cmake --build build -j
-ctest --test-dir build --output-on-failure
+cmake --build build -j1
+(cd build && ctest --output-on-failure)
 ```
 
 `ctest` 应显示两个测试通过：
@@ -112,7 +115,7 @@ framework_correctness_pipeline
 如果修改 `src/mygemm.c` 后需要重新编译，只需运行：
 
 ```bash
-cmake --build build -j
+cmake --build build -j1
 ```
 
 建议先保留编译器警告。不得通过删除正确性检查或修改测试程序来消除错误。
@@ -257,7 +260,7 @@ cache_part4_o3
 每完成一个阶段后重新编译，并使用小矩阵测试：
 
 ```bash
-cmake --build build -j
+cmake --build build -j1
 
 ./build/reg_reuse 6 12 24 48
 ./build/cache_part3 48 6

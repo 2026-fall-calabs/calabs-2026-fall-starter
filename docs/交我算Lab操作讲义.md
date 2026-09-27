@@ -293,7 +293,7 @@ rsync -av --exclude=".git/" --exclude="build*/" \
 
 ```bash
 cd ~/course-labs
-srun -p cpu -N 1 -n 1 -c 1 -t 00:20:00 \
+srun -p cpu -N 1 -n 1 -c 1 -t 03:00:00 \
   --cpu-bind=cores --pty /bin/bash -l
 hostname
 gcc --version
@@ -302,7 +302,7 @@ module load cmake
 cmake --version
 ```
 
-本教程统一申请最长 20 分钟运行时间（`00:20:00`），不含排队时间。
+本教程统一申请最长 3 小时运行时间（`03:00:00`），不含排队时间。
 编译、测试和交互终端空闲均计入时限；提前结束就会提前释放资源。
 
 只有资源分配完成后才执行编译和实验。`/bin/bash -l` 启动登录 shell，以初始化
@@ -344,8 +344,7 @@ cmake --build build -j1
 ctest --test-dir build --output-on-failure
 ```
 
-交我算只申请了一个 CPU 核心，因此把 README 中的 `-j` 明确限制为 `-j1`。
-其他路径、构建目标与正式流程一致。不要上传本地 `build/` 或 `CMakeCache.txt`。
+交我算申请一个 CPU 核心，编译统一使用 `-j1`，与 README 一致。不要上传本地 `build/` 或 `CMakeCache.txt`。
 `ctest --test-dir` 需要 CMake/CTest ≥ 3.20。若模块只有 3.16～3.19，最后一行改为：
 
 ```bash
@@ -372,57 +371,78 @@ cmake --build build -j1
 
 ## 5. DataLab 批处理脚本
 
-将以下内容保存为仓库根目录 `course-labs/lab1.slurm`。使用 UTF-8 编码、LF 换行。
-先填写个人信息并完成代码。编码规则检查按第 3 节另行执行：
+课程根目录已提供 [lab1.slurm](../lab1.slurm)，无需手动创建。先填写个人信息并完成代码。
+默认执行全部评分；传入函数名可以单题测试。编码规则检查按第 3 节另行执行。
 
 ```bash
-#!/bin/bash
+#!/bin/bash -l
 #SBATCH -J datalab
 #SBATCH -p cpu -N 1 -n 1 -c 1
-#SBATCH -t 00:20:00
+#SBATCH -t 03:00:00
 #SBATCH -o results/lab1-%j.log
 
 set -euo pipefail
-cd "$SLURM_SUBMIT_DIR/labs/lab1-datalab"
-make
-./btest -g
+: "${SLURM_JOB_ID:?请使用 sbatch 提交作业，不要在登录节点直接运行}"
+
+if (( $# > 1 )); then
+  echo "用法：sbatch lab1.slurm [函数名]" >&2
+  exit 2
+fi
+cd "${SLURM_SUBMIT_DIR:?请从课程根目录提交}/labs/lab1-datalab"
+make -j1
+if (( $# == 1 )); then
+  srun --cpu-bind=cores ./btest -f "$1"
+else
+  srun --cpu-bind=cores ./btest -g
+fi
 ```
 
 ## 6. MatrixLab 批处理脚本
 
-将以下内容保存为仓库根目录 `course-labs/lab2.slurm`，使用 UTF-8 / LF。
-示例在完成小规模检查后运行 README 第 8.3 节的正式循环次序实验：
+课程根目录已提供 [lab2.slurm](../lab2.slurm)，用于 README 第 8.3 节的正式循环次序实验。
+其他阶段各有独立脚本，完整列表见 [Slurm 脚本与提交命令](../slurm/README.md)。
+先完成相应函数并通过小规模检查，再提交正式实验：
 
 ```bash
 #!/bin/bash -l
 #SBATCH -J matrixlab
 #SBATCH -p cpu -N 1 -n 1 -c 1
-#SBATCH -t 00:20:00
+#SBATCH -t 03:00:00
 #SBATCH -o results/lab2-%j.log
 
 set -euo pipefail
-cd "$SLURM_SUBMIT_DIR"
-cd labs/lab2-matrix
-module load cmake
+: "${SLURM_JOB_ID:?请使用 sbatch 提交作业，不要在登录节点直接运行}"
+
+cd "${SLURM_SUBMIT_DIR:?请从课程根目录提交}/labs/lab2-matrix"
+module load "${CMAKE_MODULE:-cmake}"
 cmake -S . -B build
 cmake --build build -j1
-ctest --test-dir build --output-on-failure
+(cd build && ctest --output-on-failure)
 mkdir -p results
 
-srun --cpu-bind=cores \
-  ./build/cache_part3 2048 64 \
+{
+  printf 'JobID: %s\n' "$SLURM_JOB_ID"
+  hostname
+  lscpu
+  gcc --version
+  cmake --version
+  uname -a
+} | tee results/environment.txt
+
+# README §8.3：正式循环次序实验。
+srun --cpu-bind=cores ./build/cache_part3 2048 64 \
   2>&1 | tee results/loop_orders.txt
 ```
 
-每次只运行一个阶段：保留编译、CTest 和结果目录准备，将脚本最后的实验命令替换为
-第 8 节对应代码块。脚本使用 `set -euo pipefail`，实验失败会返回非零，`tee` 不会掩盖错误。
-若只使用 CMake 3.16～3.19，按第 4 节替换 CTest 命令。模块名称以实际列表为准。
+脚本使用 `set -euo pipefail`，实验失败会返回非零，`tee` 不会掩盖错误。
+CTest 写法兼容 CMake 3.16 及以上版本。默认加载 `cmake` 模块；模块名称与节点不符时，
+按脚本说明通过 `CMAKE_MODULE` 指定实际名称。
 
 同一份 Lab 2 目录一次只运行一个作业。作业结束后再修改源码、重编译或提交下一阶段，
-避免争用同一个 `build/` 和覆盖 `results/`。每个阶段默认最多运行 20 分钟，按实测耗时
-分批或调整时限。重复测量之前保存上一批日志。
+避免争用同一个 `build/` 和覆盖 `results/`。每个阶段默认最多运行 3 小时。
+重复测量之前保存上一批日志。
 
-Slurm 总日志位于仓库根目录 `course-labs/results/`，README 指定的实验数据文件位于
+Slurm 总日志位于课程根目录 `course-labs/results/`，README 指定的实验数据文件位于
 `course-labs/labs/lab2-matrix/results/`。两者都需要下载。
 
 ## 7. 提交与查看状态（登录节点）
@@ -451,9 +471,22 @@ sacct -j 123456 --format=JobID,State,ExitCode,Elapsed
 
 ## 8. 按 README 进行正式性能实验
 
-以下流程对应 [Lab 2 README 第 8、9 节](../labs/lab2-matrix/README.md)。第 8.1～8.5 节
-代码块用于替换第 6 节 `lab2.slurm` 的实验段，每次选一个阶段。保留脚本前面的编译、
-CTest、`mkdir -p results` 和 `set -euo pipefail`。脚本已经进入 Lab 2 目录。
+以下流程对应 [Lab 2 README 第 8、9 节](../labs/lab2-matrix/README.md)。课程已提供各阶段
+的完整脚本，以下代码块解释其中的实验命令。提交时在登录节点进入课程根目录，先运行
+`mkdir -p results`，然后选择一个阶段：
+
+| 阶段 | 提交命令 |
+| --- | --- |
+| 小规模正确性检查 | `sbatch slurm/lab2-check.slurm` |
+| 寄存器复用 | `sbatch slurm/lab2-register.slurm` |
+| 循环次序 | `sbatch lab2.slurm` |
+| 块大小筛选 | `sbatch slurm/lab2-block-sweep.slurm` |
+| 两个候选值确认 | `sbatch slurm/lab2-block-confirm.slurm 64 128` |
+| 四个优化级别 | `sbatch slurm/lab2-opt-levels.slurm 64` |
+| O3 重复三次 | `sbatch slurm/lab2-repeat.slurm 64` |
+
+表中 `64 128` 和 `64` 只是示例，必须换成实测候选值或最终最佳块大小。
+脚本会自行进入 Lab 2 目录、编译、运行 CTest 并创建实验数据目录。
 矩阵规模、块大小候选值和结果文件名与 README 一致；批处理中的程序命令前增加
 `srun --cpu-bind=cores` 以绑定分配的 CPU。
 
@@ -542,7 +575,8 @@ done
 
 ### 8.6 环境记录和报告（README §9）
 
-在实际运行实验的计算节点记录环境：
+每份 Lab 2 Slurm 脚本会自动记录环境，并将记录同时写入总日志。
+交互式实验可在实际运行实验的计算节点执行：
 
 ```bash
 {
@@ -574,7 +608,12 @@ bash scripts/run_all.sh mydata.txt
 寄存器规模为 66、126、258、510、1026、2046，与正式实验相同；Part 3 的 n/b 为 2000/10，
 Part 4 为 2040/60，这两项仍与正式实验参数不同。
 它用于额外批量检查，不能替代前面按 README 第 8.2～8.6 节收集的正式数据。
-批量脚本在已申请的计算节点运行。使用批处理方式时，在登录节点通过 `sbatch` 提交作业。
+批量脚本在已申请的计算节点运行。使用批处理方式时，返回登录节点并从课程根目录执行：
+
+```bash
+mkdir -p results
+sbatch slurm/lab2-default-all.slurm
+```
 
 ## 9. 下载结果（本地电脑）
 
