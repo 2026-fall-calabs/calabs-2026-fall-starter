@@ -293,7 +293,7 @@ rsync -av --exclude=".git/" --exclude="build*/" \
 
 ```bash
 cd ~/course-labs
-srun -p cpu -N 1 -n 1 -c 1 -t 02:00:00 \
+srun -p cpu -N 1 -n 1 -c 1 -t 00:20:00 \
   --cpu-bind=cores --pty /bin/bash -l
 hostname
 gcc --version
@@ -302,7 +302,7 @@ module load cmake
 cmake --version
 ```
 
-本教程统一申请最长 2 小时运行时间（`02:00:00`），不含排队时间。
+本教程统一申请最长 20 分钟运行时间（`00:20:00`），不含排队时间。
 编译、测试和交互终端空闲均计入时限；提前结束就会提前释放资源。
 
 只有资源分配完成后才执行编译和实验。`/bin/bash -l` 启动登录 shell，以初始化
@@ -379,7 +379,7 @@ cmake --build build -j1
 #!/bin/bash
 #SBATCH -J datalab
 #SBATCH -p cpu -N 1 -n 1 -c 1
-#SBATCH -t 02:00:00
+#SBATCH -t 00:20:00
 #SBATCH -o results/lab1-%j.log
 
 set -euo pipefail
@@ -397,7 +397,7 @@ make
 #!/bin/bash -l
 #SBATCH -J matrixlab
 #SBATCH -p cpu -N 1 -n 1 -c 1
-#SBATCH -t 02:00:00
+#SBATCH -t 00:20:00
 #SBATCH -o results/lab2-%j.log
 
 set -euo pipefail
@@ -419,7 +419,7 @@ srun --cpu-bind=cores \
 若只使用 CMake 3.16～3.19，按第 4 节替换 CTest 命令。模块名称以实际列表为准。
 
 同一份 Lab 2 目录一次只运行一个作业。作业结束后再修改源码、重编译或提交下一阶段，
-避免争用同一个 `build/` 和覆盖 `results/`。每个阶段默认最多运行 2 小时，按实测耗时
+避免争用同一个 `build/` 和覆盖 `results/`。每个阶段默认最多运行 20 分钟，按实测耗时
 分批或调整时限。重复测量之前保存上一批日志。
 
 Slurm 总日志位于仓库根目录 `course-labs/results/`，README 指定的实验数据文件位于
