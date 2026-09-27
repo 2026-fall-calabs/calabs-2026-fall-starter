@@ -90,20 +90,111 @@ exit
 第一次连接先核对主机身份，再按提示确认。按平台要求输入密码或完成认证。
 别名只简化命令，不会自动免除密码认证；不要在 config 里填写密码。
 
-### 1.4 可选：平台免密证书
+### 1.4 可选：学生免密登录与证书申请
 
-需要免密登录时，通过[超算账号管理平台](https://my.hpc.sjtu.edu.cn/)按官方流程
-申请证书。配置匹配的私钥和有效证书，例如在相应的 `Host` 段内增加：
+本节适用于**账号已开放免密证书申请，且普通密码登录正常**的同学。课程教学账号
+是否开放申请，以实际管理页面和管理员确认为准。没有申请入口或申请失败时，继续
+使用密码登录并联系助教。免密证书不会解除教学账号的校内网络登录限制。
 
-```sshconfig
-    IdentityFile ~/.ssh/id_ed25519
-    CertificateFile ~/.ssh/id_ed25519-cert.pub
+#### 第一步：登录平台并申请证书
+
+1. 在自己的电脑上打开[超算账号管理平台](https://my.hpc.sjtu.edu.cn/)。
+2. 登录后核对当前超算账号，确保是老师发给你的教学账号。按页面提示在“个人主页”
+   补充所需的 jAccount / 邮箱绑定，已有绑定不要随意更改。
+3. 找到免密证书申请功能。没有自己的密钥时可使用“一键生成”；已有密钥时，上传
+   对应公钥文件（例如 `id_ed25519.pub`），或粘贴公钥文本。不要上传私钥。
+4. 按页面提示完成授权并下载证书。一键生成时同时保存生成的密钥文件；提交已有
+   公钥时，继续使用原来的私钥。
+
+#### 第二步：保存本地文件
+
+为本次配置新建独立目录，避免覆盖其他服务器使用的密钥：
+
+- macOS / Linux：`~/.ssh/jiaowosuan/`
+- Windows：`C:/Users/你的用户名/.ssh/jiaowosuan/`
+
+通过文件管理器将下载的文件放入这个目录。以下以 ED25519 文件名演示：
+
+| 文件 | 用途 |
+| --- | --- |
+| `id_ed25519` | 私钥，只在自己的电脑上保存 |
+| `id_ed25519.pub` | 公钥，用于申请对应证书 |
+| `id_ed25519-cert.pub` | 免密证书，与私钥匹配，需检查有效期 |
+
+实际文件名以下载结果为准。如果平台生成的是 `id_rsa`、`id_rsa.pub` 和
+`id_rsa-cert.pub`，后面的命令与配置要一起替换。若目录已有同名文件，核对用途后
+另建目录存放新文件。私钥、个人配置和证书不放进课程代码或云盘作业包。
+
+macOS / Linux 可先建目录，并在文件保存后设置权限：
+
+```bash
+mkdir -p ~/.ssh/jiaowosuan
+chmod 700 ~/.ssh/jiaowosuan
+# 将本次下载的文件放入目录后，再执行下面一行
+chmod 600 ~/.ssh/jiaowosuan/id_ed25519
 ```
 
-文件名以自己实际持有的文件为准；Windows 可使用 `C:/Users/你的用户名/.ssh/...`
-形式的路径。证书过期后需按平台流程续签。平台已改用证书认证，单独使用
-`ssh-copy-id` 或添加 `authorized_keys` 不能完成该免密配置。
-私钥和证书留在本地，不放进课程代码或云盘作业包。
+Windows 可在文件资源管理器中创建目录，以上 `chmod` 命令不用于 PowerShell。
+
+#### 第三步：修改自己的 SSH config
+
+在第 1.3 节已有的 `Host jiaowosuan` 和 `Host jiaowosuan-data` 两个配置段内，
+**分别追加**下面两行，保留原有 `HostName`、`User` 等字段：
+
+```sshconfig
+    IdentityFile ~/.ssh/jiaowosuan/id_ed25519
+    CertificateFile ~/.ssh/jiaowosuan/id_ed25519-cert.pub
+```
+
+`IdentityFile` 指向私钥，`CertificateFile` 指向匹配证书。如果使用已有密钥申请，
+`IdentityFile` 改为原私钥的实际路径。证书对应的账号应与 `User` 一致。
+Windows 的 config 同样可使用 `~/.ssh/...`，也可写成
+`C:/Users/你的用户名/.ssh/jiaowosuan/...`；路径包含空格时用双引号括起。
+
+平台已改用证书认证，单独使用 `ssh-copy-id` 或向 `authorized_keys` 添加公钥
+不能替代证书申请。
+
+#### 第四步：检查证书并验证登录
+
+在**本地终端**进入证书所在目录。macOS / Linux：
+
+```bash
+cd ~/.ssh/jiaowosuan
+```
+
+Windows PowerShell：
+
+```powershell
+Set-Location "$env:USERPROFILE/.ssh/jiaowosuan"
+```
+
+然后查看证书的 `Valid` 有效期和 `Principals` 账号信息：
+
+```bash
+ssh-keygen -L -f id_ed25519-cert.pub
+```
+
+仅使用公钥认证测试登录，避免输入账号密码后误以为免密已配置成功：
+
+```bash
+ssh -o PreferredAuthentications=publickey jiaowosuan
+```
+
+成功进入远端且没有要求输入超算账号密码，说明本次证书认证可用。可运行 `hostname`
+确认，然后用 `exit` 退出。再用同一别名连接 VS Code。数据节点也可把验证命令的
+别名替换为 `jiaowosuan-data` 单独测试。
+
+如果提示输入 `passphrase`，这是私钥的本地保护口令，仍可能需要输入。上面的
+`PreferredAuthentications` 选项只对这次命令生效，不会修改默认 SSH 配置。
+
+#### 第五步：续签与排错
+
+- **找不到文件**：核对本地目录、文件名、扩展名，以及 config 中的实际路径。
+- **Permission denied**：检查私钥与证书是否匹配、`User` 是否正确、证书是否有效。
+  可以先用普通 `ssh jiaowosuan` 按提示进行密码认证。
+- **证书过期**：回到管理平台重新申请。使用原公钥时更新证书文件；重新生成密钥时
+  同时更新私钥与证书，再重复验证。
+- **账号未开放申请**：使用密码登录并请助教向平台确认权限。
 
 ### 1.5 首次上传源码（本地电脑）
 
@@ -340,23 +431,29 @@ scp jiaowosuan-data:course-labs/labs/lab1-datalab/bits.c ./pi2-submission/
 scp jiaowosuan-data:course-labs/labs/lab2-matrix/src/mygemm.c ./pi2-submission/
 ```
 
-若目录已存在，先检查其中版本，或使用带日期的新目录名。随后：
+若目录已存在，先核对版本，或使用带日期的新目录。选择当前 Lab 的源码：
+Lab 1 为 bits.c，Lab 2 为 mygemm.c，分别上传对应的“源码提交”任务。
+报告、实验数据和要求的日志按课程通知另交。
 
-1. 加入题面要求的报告和实验日志，检查文件内容确为最后一次修改。
-2. 通过系统压缩功能分别生成各 Lab 的作业包。建议命名“学号_姓名_Lab编号.zip”，
-   以课程实际命名要求为准。
-3. 上传到教师指定的交大云盘收件入口，填写要求的身份信息。
-4. 重新下载已上传的包，核对源码与报告，并保留上传时间及版本记录。
+1. 打开教师发布的云盘收集链接，登录并填写本人学号、姓名。
+2. 选择已经自测的本地 .c 源码，提交并等待上传完成。
+3. 核对自己的提交记录，保留本地最终文件。
+4. 修改后在同一入口重新上传并选择替换旧文件，避免多份最终版本。
 
-不用上传 build、缓存、可执行文件或 SSH 配置。无需创建 GitHub PR，也没有自动
-workflow 反馈；公开测试自行运行，教师下载原始提交后统一评分。云盘上传本身不会
-运行测试。提交入口、所需文件与截止时间以教师通知为准。
+云盘按学号与姓名统一命名，例如 0001_示例甲.c。正式评分使用教师下载并归档的源码，
+上传本身不会运行测试。多文件实验再按教师要求提交 ZIP。
+完整说明和评分反馈的读法见 [作业提交说明](作业提交说明.md)。
+
+自动评分只计算正确性，不计算性能分。缺交、重复、身份信息不符或评分环境故障由助教
+核对处理。构建目录、可执行文件、个人 SSH 配置和密钥无需提交。
 
 ## 官方参考
 
 - [SSH 登录](https://docs.hpc.sjtu.edu.cn/login/sshlogin.html)
 - [免密证书与账号管理](https://docs.hpc.sjtu.edu.cn/accounts/security.html)
 - [平台 VS Code 使用说明](https://docs.hpc.sjtu.edu.cn/login/vscode.html)
+- [OpenSSH 证书检查命令](https://man.openbsd.org/ssh-keygen)
+- [OpenSSH 客户端配置](https://man.openbsd.org/ssh_config)
 - [VS Code Remote-SSH](https://code.visualstudio.com/docs/remote/ssh)
 - [VS Code 远程连接排错](https://code.visualstudio.com/docs/remote/troubleshooting)
 - [文件传输](https://docs.hpc.sjtu.edu.cn/transport/transportsolution.html)
