@@ -6,8 +6,7 @@ Desktop.ini
 
 # Editor-local files
 .idea/
-.vscode/*
-!.vscode/settings.json
+.vscode/
 *.swp
 *.swo
 *~

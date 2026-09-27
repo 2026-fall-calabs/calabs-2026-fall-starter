@@ -2,26 +2,173 @@
 
 适用：课程学生首次在 π 2.0 运行 DataLab 和 MatrixLab。命令需在标注的位置执行。
 
-- 本地目录示例为 /path/to/course-labs，请替换为课程学生框架的实际解压目录。
-- 将 your_username 替换为本人超算账号。HPC_USER 只是在本地终端使用的变量，新终端需重新设置。
+- 从教师发布的交大云盘链接下载学生框架；将解压后的课程根目录命名为 course-labs。
+- 将 your_username 替换为本人超算账号。命令中的 jiaowosuan 和 jiaowosuan-data 是下面配置的本地别名。
 - 课程根目录应包含 labs/lab1-datalab 和 labs/lab2-matrix。
 - 不上传本地 build、CMakeCache.txt 或可执行文件，集群上重新编译。
 - 教学账号按平台要求在校内网络登录。
 
-## 1. 本地上传和登录
+## 1. 云盘获取、SSH 配置与 VS Code 连接
+
+### 1.1 从云盘获取学生框架
+
+在本地浏览器打开教师提供的交大云盘链接，完成页面要求的登录或提取码验证后下载。
+解压并确认 `course-labs/labs/` 下有两个 Lab 目录。保留教师发布的版本号。
+课程采用云盘交作业，代码检查在计算节点运行，不依赖 GitHub workflow。
+
+云盘分享页面不一定是文件直链，不能直接把分享页面地址当成 `wget` 下载地址。
+本教程采用“浏览器下载到本地，再传到数据节点”的流程。
+
+### 1.2 在自己的电脑编辑 SSH config
+
+先在本地终端运行 `ssh -V`，确认已有 OpenSSH 客户端。
+
+| 系统 | 配置文件位置 | 编辑方式 |
+| --- | --- | --- |
+| macOS / Linux | `~/.ssh/config` | 终端中用 nano，或用 VS Code 打开该文件 |
+| Windows | `C:\Users\你的用户名\.ssh\config` | PowerShell 中用记事本，或用 VS Code 打开 |
+
+macOS / Linux：
 
 ```bash
-HPC_USER=your_username
+mkdir -p ~/.ssh
+touch ~/.ssh/config
+nano ~/.ssh/config
+```
+
+把下一节配置追加到文件中；保留已有主机条目。nano 中用 Ctrl-O、Enter 保存，Ctrl-X 退出。
+文件权限可在本地设置为：
+
+```bash
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/config
+```
+
+Windows PowerShell：
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh"
+notepad "$env:USERPROFILE\.ssh\config"
+```
+
+文件名必须是 `config`，没有 `.txt` 后缀。上述路径是本地用户目录，不是课程仓库
+里的 `.vscode`，也不是远端服务器上的 `~/.ssh/config`。
+
+### 1.3 添加登录与传输别名
+
+把下列内容写入本地 `config`，将两处 `your_username` 都换成本人超算用户名。
+如果已有同名 `Host` 条目，编辑原条目，避免重复定义。
+
+```sshconfig
+Host jiaowosuan
+    HostName pilogin.hpc.sjtu.edu.cn
+    User your_username
+    Port 22
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+
+Host jiaowosuan-data
+    HostName data.hpc.sjtu.edu.cn
+    User your_username
+    Port 22
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+```
+
+`Host` 是自己取的简称，`HostName` 是平台入口，`User` 是超算账号。
+登录别名用于编辑文件和提交作业；数据别名用于文件上传下载。
+
+在本地终端测试：
+
+```bash
+ssh jiaowosuan
+hostname
+pwd
+exit
+```
+
+第一次连接先核对主机身份，再按提示确认。按平台要求输入密码或完成认证。
+别名只简化命令，不会自动免除密码认证；不要在 config 里填写密码。
+
+### 1.4 可选：平台免密证书
+
+需要免密登录时，通过[超算账号管理平台](https://my.hpc.sjtu.edu.cn/)按官方流程
+申请证书。配置匹配的私钥和有效证书，例如在相应的 `Host` 段内增加：
+
+```sshconfig
+    IdentityFile ~/.ssh/id_ed25519
+    CertificateFile ~/.ssh/id_ed25519-cert.pub
+```
+
+文件名以自己实际持有的文件为准；Windows 可使用 `C:/Users/你的用户名/.ssh/...`
+形式的路径。证书过期后需按平台流程续签。平台已改用证书认证，单独使用
+`ssh-copy-id` 或添加 `authorized_keys` 不能完成该免密配置。
+私钥和证书留在本地，不放进课程代码或云盘作业包。
+
+### 1.5 首次上传源码（本地电脑）
+
+先进入 `course-labs` 的上一级目录，再执行；Windows PowerShell 也可使用：
+
+```bash
+scp -r ./course-labs jiaowosuan-data:
+ssh jiaowosuan
+cd ~/course-labs
+ls labs
+```
+
+上传前检查目录仅含学生框架和自己的源码。后续更新先保存远端修改，再合并新版本，
+避免用本地旧代码覆盖 VS Code 远程编辑的内容。
+
+macOS / Linux 也可用 rsync 过滤生成文件：
+
+```bash
 cd /path/to/course-labs
 rsync -av --exclude=".git/" --exclude="build*/" \
   --exclude="results/" --exclude="btest" \
   --exclude="btest.exe" ./ \
-  "${HPC_USER}@data.hpc.sjtu.edu.cn:course-labs/"
-ssh "${HPC_USER}@pilogin.hpc.sjtu.edu.cn"
+  jiaowosuan-data:course-labs/
 ```
 
-已有别名时可用 `ssh jiaowosuan`。此别名仅在配置过的电脑上生效。
-重复上传会更新同名文件。若在远端改过源码，先保存远端修改。
+### 1.6 VS Code Remote-SSH
+
+1. 在本地 VS Code 扩展页面安装 Microsoft 发布的 **Remote - SSH**。
+2. 先在独立的本地终端运行 `ssh jiaowosuan`，保持该普通 SSH 会话打开。平台用它
+   判断用户是否活跃，只有 VS Code 后台进程时可能清理连接。
+3. 在 VS Code 按 F1，执行 **Remote-SSH: Connect to Host...**，选择 `jiaowosuan`。
+4. 若提示远端系统，选择 **Linux**。按提示完成密码、证书或额外认证。
+5. 确认左下角显示 `SSH: jiaowosuan`。选择“打开文件夹”，输入远端的 `~/course-labs`；
+   若该输入框未展开 `~`，使用普通 SSH 会话里 `pwd` 显示的主目录绝对路径。
+6. 在远程窗口打开 `labs/lab1-datalab/bits.c` 或 `labs/lab2-matrix/src/mygemm.c`。
+   保存会修改服务器上的文件。
+7. 打开 VS Code 集成终端，按第 2 节先运行 `srun` 申请计算资源，再编译和测试。
+
+新开的集成终端通常仍在登录节点。每次运行实验前用 `hostname` 确认位置；只有发起
+`srun` 并获分配的终端进入了计算节点。编辑器连接不会自动随之迁移。
+登录节点上只编辑文件、查看状态和提交作业，不使用自动编译或直接运行实验按钮。
+
+### 1.7 VS Code 连接排错
+
+- **密码提示未显示**：查看“输出”中的 Remote - SSH 日志，或启用本地 VS Code
+  用户设置 `remote.SSH.showLoginTerminal`。
+- **远端下载 VS Code Server 失败**：在本地用户设置中将
+  `remote.SSH.localServerDownload` 设为 `always`，让本地下载后传到远端；本地仍需
+  能访问微软下载服务。扩展及其依赖的下载还可能需要另外处理。
+- **别名找不到**：检查编辑的是当前本地用户的 config，并确认文件没有 `.txt` 后缀。
+- **证书失效或账号认证失败**：先在普通终端检查 `ssh jiaowosuan`，再检查证书有效期、
+  校内网络和平台认证提示。
+- **终端 SSH 成功但 VS Code 反复断开**：保持普通 SSH 会话，查看 Remote - SSH 日志；
+  平台入口可能分配不同登录节点，必要时按平台和 VS Code 官方文档排查连接复用。
+
+在“首选项：打开用户设置(JSON)”中合并以下字段，保留已有其他设置：
+
+```json
+{
+  "remote.SSH.showLoginTerminal": true,
+  "remote.SSH.localServerDownload": "always"
+}
+```
+
+这是本地 VS Code 用户设置，不需要创建仓库 `.vscode/settings.json`。
 
 ## 2. 在登录节点申请交互式计算资源
 
@@ -171,18 +318,47 @@ done
 ## 9. 下载结果（本地电脑）
 
 ```bash
-HPC_USER=your_username
 mkdir -p pi2-results
 rsync -av \
-  "${HPC_USER}@data.hpc.sjtu.edu.cn:course-labs/results/" \
+  jiaowosuan-data:course-labs/results/ \
   ./pi2-results/
 ```
 
 按实验批次保存日志。关闭 SSH 通常不会停止已提交的 sbatch 作业。
 
+Windows 或未安装 rsync 的电脑可在本地新建的收集目录中执行
+`scp -r jiaowosuan-data:course-labs/results ./`，下载整个 results 子目录。
+
+## 10. 通过交大云盘提交作业
+
+先在远程编辑器保存最终代码并完成计算节点上的检查，再回到**本地终端**下载要提交
+的源码。下面示例同时收集两个 Lab；正式提交时按各 Lab 题面分别整理。
+
+```bash
+mkdir pi2-submission
+scp jiaowosuan-data:course-labs/labs/lab1-datalab/bits.c ./pi2-submission/
+scp jiaowosuan-data:course-labs/labs/lab2-matrix/src/mygemm.c ./pi2-submission/
+```
+
+若目录已存在，先检查其中版本，或使用带日期的新目录名。随后：
+
+1. 加入题面要求的报告和实验日志，检查文件内容确为最后一次修改。
+2. 通过系统压缩功能分别生成各 Lab 的作业包。建议命名“学号_姓名_Lab编号.zip”，
+   以课程实际命名要求为准。
+3. 上传到教师指定的交大云盘收件入口，填写要求的身份信息。
+4. 重新下载已上传的包，核对源码与报告，并保留上传时间及版本记录。
+
+不用上传 build、缓存、可执行文件或 SSH 配置。无需创建 GitHub PR，也没有自动
+workflow 反馈；公开测试自行运行，教师下载原始提交后统一评分。云盘上传本身不会
+运行测试。提交入口、所需文件与截止时间以教师通知为准。
+
 ## 官方参考
 
 - [SSH 登录](https://docs.hpc.sjtu.edu.cn/login/sshlogin.html)
+- [免密证书与账号管理](https://docs.hpc.sjtu.edu.cn/accounts/security.html)
+- [平台 VS Code 使用说明](https://docs.hpc.sjtu.edu.cn/login/vscode.html)
+- [VS Code Remote-SSH](https://code.visualstudio.com/docs/remote/ssh)
+- [VS Code 远程连接排错](https://code.visualstudio.com/docs/remote/troubleshooting)
 - [文件传输](https://docs.hpc.sjtu.edu.cn/transport/transportsolution.html)
 - [Slurm 作业管理](https://docs.hpc.sjtu.edu.cn/job/slurm.html)
 - [队列说明](https://docs.hpc.sjtu.edu.cn/job/partition.html)

@@ -14,29 +14,34 @@
 
 在 π 2.0 上运行实验，请阅读 [交我算教程与命令讲义](docs/README.md)。
 
-## 自动检查
+## 获取代码与自行检查
 
-推送代码后，GitHub Actions 会自动评测 Data Lab，并构建 Matrix Lab、运行小规模
-正确性测试。相关工作流全部通过，表示当前代码满足公开测试中的正确性要求。最终
-成绩以教师使用原始提交文件重新运行的私有评分结果为准。
+从教师发布的交大云盘链接下载学生框架，解压后按教程上传到交我算。
+在 Slurm 分配的计算节点上编译并运行各 Lab 的公开测试；最终成绩以教师对原始
+提交文件重新评测的结果为准。
 
 ## 提交方式
 
-每位学生应在教师分配的个人仓库中完成实验，而不是直接修改课程模板仓库。完成
-代码后，将提交推送到个人仓库的 `main` 分支即可触发自动评测。
-无需向课程模板仓库提交 Pull Request。Pull Request 可以用于个人分支合并或代码
-审阅，但不是交作业的必要步骤。
+按各 Lab 题面整理源码、报告和要求的日志，通过教师指定的交大云盘收件入口上传。
+建议使用“学号_姓名_Lab编号.zip”命名，以教师最终要求为准。上传后重新下载并检查
+文件内容，保留提交时间与版本记录；截止时间以课程通知为准。
 
-截止时间到达后，教师从每位学生个人仓库的 `main` 分支取得指定提交，并使用私有
-评分器重新评测。请在截止时间前确认提交已经推送，而且 GitHub Actions 已运行。
+Lab 1 的源码是 `labs/lab1-datalab/bits.c`，Lab 2 的源码是
+`labs/lab2-matrix/src/mygemm.c`。如果在 VS Code 远程窗口修改代码，保存后还需将
+远端文件下载到本地，再上传云盘。构建目录、可执行文件和个人 SSH 配置无需提交。
 
-本地运行 Matrix Lab 快速检查：
+本仓库用于维护和分发学生框架，学生通过云盘交作业，无需提交 GitHub PR。
+
+在计算节点运行 Matrix Lab 快速检查：
 
 ```bash
 cd labs/lab2-matrix
-cmake -S . -B build
-cmake --build build -j
+cmake -S . -B build -DBUILD_TESTING=ON -DLAB_USE_SYSTEM_BLAS=OFF
+cmake --build build --parallel 1
+(cd build && ctest --output-on-failure)
 ./build/reg_reuse 6 12 24 48
 ./build/cache_part3 48 6
-./build/cache_part4_o3 48 6
+for opt in 0 1 2 3; do
+  ./build/cache_part4_o${opt} 48 6
+done
 ```
