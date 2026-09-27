@@ -103,69 +103,110 @@ exit
    补充所需的 jAccount / 邮箱绑定，已有绑定不要随意更改。
 3. 找到免密证书申请功能。没有自己的密钥时可使用“一键生成”；已有密钥时，上传
    对应公钥文件（例如 `id_ed25519.pub`），或粘贴公钥文本。不要上传私钥。
-4. 按页面提示完成授权并下载证书。一键生成时同时保存生成的密钥文件；提交已有
-   公钥时，继续使用原来的私钥。
+4. 按页面提示完成授权。一键生成后，将下载目录里的**私钥与证书两个文件**移入
+   本地 `.ssh`，操作见下一步；提交已有公钥时，继续使用原来的私钥。
 
-#### 第二步：保存本地文件
+#### 第二步：将 Downloads 中的两个文件移入本地 .ssh
 
-为本次配置新建独立目录，避免覆盖其他服务器使用的密钥：
+下面以一键生成后下载的 `id_ed25519` 与 `id_ed25519-cert.pub` 为例：
 
-- macOS / Linux：`~/.ssh/jiaowosuan/`
-- Windows：`C:/Users/你的用户名/.ssh/jiaowosuan/`
-
-通过文件管理器将下载的文件放入这个目录。以下以 ED25519 文件名演示：
-
-| 文件 | 用途 |
+| 下载的文件 | 用途 |
 | --- | --- |
-| `id_ed25519` | 私钥，只在自己的电脑上保存 |
-| `id_ed25519.pub` | 公钥，用于申请对应证书 |
-| `id_ed25519-cert.pub` | 免密证书，与私钥匹配，需检查有效期 |
+| `id_ed25519` | 私钥，配置中的 `IdentityFile` 指向它 |
+| `id_ed25519-cert.pub` | 证书，配置中的 `CertificateFile` 指向它 |
 
-实际文件名以下载结果为准。如果平台生成的是 `id_rsa`、`id_rsa.pub` 和
-`id_rsa-cert.pub`，后面的命令与配置要一起替换。若目录已有同名文件，核对用途后
-另建目录存放新文件。私钥、个人配置和证书不放进课程代码或云盘作业包。
+本步骤只需要这两个文件。文件名以实际下载结果为准；如果是 `id_rsa` 和
+`id_rsa-cert.pub`，后面的命令与配置一并替换。如果浏览器使用其他下载目录，也要
+相应修改 `Downloads` 路径。
 
-macOS / Linux 可先建目录，并在文件保存后设置权限：
+**在自己的电脑上移动文件。目标 `.ssh` 若已有同名文件，先停止并核对用途，保留
+原文件；可另建目录存放新文件，再相应修改 config。**
+
+macOS / Linux 本地终端：
 
 ```bash
-mkdir -p ~/.ssh/jiaowosuan
-chmod 700 ~/.ssh/jiaowosuan
-# 将本次下载的文件放入目录后，再执行下面一行
-chmod 600 ~/.ssh/jiaowosuan/id_ed25519
+mkdir -p ~/.ssh
+mv -i ~/Downloads/id_ed25519 ~/.ssh/
+mv -i ~/Downloads/id_ed25519-cert.pub ~/.ssh/
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/id_ed25519
 ```
 
-Windows 可在文件资源管理器中创建目录，以上 `chmod` 命令不用于 PowerShell。
+`mv -i` 遇到同名目标文件时会询问是否覆盖，应先输入 `n`，核对原文件用途。
+移动完成后，私钥和证书分别位于 `~/.ssh/id_ed25519` 与
+`~/.ssh/id_ed25519-cert.pub`。
+
+Windows 本地 PowerShell：
+
+```powershell
+Set-Location "$env:USERPROFILE"
+New-Item -ItemType Directory -Force .ssh
+Move-Item ./Downloads/id_ed25519 ./.ssh/
+Move-Item ./Downloads/id_ed25519-cert.pub ./.ssh/
+```
+
+先切换到自己的用户目录，随后将两个文件移到该目录下的 `.ssh`。Windows 不执行
+上面的 `chmod` 命令。也可在文件资源管理器中剪切这两个文件，粘贴到
+`C:/Users/你的用户名/.ssh/`。移动报同名冲突时先核对，不覆盖已有文件。
+私钥、个人配置和证书不放进课程代码或云盘作业包。
 
 #### 第三步：修改自己的 SSH config
 
-在第 1.3 节已有的 `Host jiaowosuan` 和 `Host jiaowosuan-data` 两个配置段内，
-**分别追加**下面两行，保留原有 `HostName`、`User` 等字段：
+两个文件移入 `.ssh` 后，在第 1.3 节已有的 `Host jiaowosuan` 和
+`Host jiaowosuan-data` 两个配置段内，**分别追加**下面三行，保留原有
+`HostName`、`User` 等字段：
 
 ```sshconfig
-    IdentityFile ~/.ssh/jiaowosuan/id_ed25519
-    CertificateFile ~/.ssh/jiaowosuan/id_ed25519-cert.pub
+    IdentityFile ~/.ssh/id_ed25519
+    CertificateFile ~/.ssh/id_ed25519-cert.pub
+    IdentitiesOnly yes
 ```
 
-`IdentityFile` 指向私钥，`CertificateFile` 指向匹配证书。如果使用已有密钥申请，
-`IdentityFile` 改为原私钥的实际路径。证书对应的账号应与 `User` 一致。
+`IdentityFile` 指向移动后的私钥，`CertificateFile` 指向匹配证书。使用已有密钥
+申请时，`IdentityFile` 改为原私钥的实际路径。证书对应的账号应与 `User` 一致。
 Windows 的 config 同样可使用 `~/.ssh/...`，也可写成
-`C:/Users/你的用户名/.ssh/jiaowosuan/...`；路径包含空格时用双引号括起。
+`C:/Users/你的用户名/.ssh/...`；路径包含空格时用双引号括起。
 
+`IdentitiesOnly yes` 避免额外尝试 `ssh-agent` 提供的其他密钥，适合同时配置了多个
+服务器账号的电脑。它不会禁用密码或键盘交互认证，也不免除私钥自身的 passphrase。
 平台已改用证书认证，单独使用 `ssh-copy-id` 或向 `authorized_keys` 添加公钥
 不能替代证书申请。
 
-#### 第四步：检查证书并验证登录
+#### 第四步：直接登录，按需验证免密
 
-在**本地终端**进入证书所在目录。macOS / Linux：
+配置完成后，日常在本地终端直接运行：
 
 ```bash
-cd ~/.ssh/jiaowosuan
+ssh jiaowosuan
+```
+
+VS Code Remote-SSH 同样选择 `jiaowosuan`。如果普通登录仍要求输入超算账号密码，
+应检查文件路径、账号和证书有效期。如果提示 `passphrase`，这是私钥的本地保护
+口令，仍可能需要输入。
+
+**可选验证**：若要确认配置确实能完成证书认证，可临时仅允许公钥认证：
+
+```bash
+ssh -o PreferredAuthentications=publickey jiaowosuan
+```
+
+`-o` 为本次 SSH 连接传入临时选项。这里的选项避免证书认证失败后回退到账号密码，
+便于判断免密是否成功；它只对本次命令生效，**日常登录不用加 `-o`，也不需要将
+`PreferredAuthentications` 写入 config**。
+
+成功进入远端后，可运行 `hostname` 确认，再用 `exit` 退出。数据节点也可将别名
+替换为 `jiaowosuan-data` 单独测试。
+
+如需检查证书详情，在本地终端进入 `.ssh` 目录。macOS / Linux：
+
+```bash
+cd ~/.ssh
 ```
 
 Windows PowerShell：
 
 ```powershell
-Set-Location "$env:USERPROFILE/.ssh/jiaowosuan"
+Set-Location "$env:USERPROFILE/.ssh"
 ```
 
 然后查看证书的 `Valid` 有效期和 `Principals` 账号信息：
@@ -173,19 +214,6 @@ Set-Location "$env:USERPROFILE/.ssh/jiaowosuan"
 ```bash
 ssh-keygen -L -f id_ed25519-cert.pub
 ```
-
-仅使用公钥认证测试登录，避免输入账号密码后误以为免密已配置成功：
-
-```bash
-ssh -o PreferredAuthentications=publickey jiaowosuan
-```
-
-成功进入远端且没有要求输入超算账号密码，说明本次证书认证可用。可运行 `hostname`
-确认，然后用 `exit` 退出。再用同一别名连接 VS Code。数据节点也可把验证命令的
-别名替换为 `jiaowosuan-data` 单独测试。
-
-如果提示输入 `passphrase`，这是私钥的本地保护口令，仍可能需要输入。上面的
-`PreferredAuthentications` 选项只对这次命令生效，不会修改默认 SSH 配置。
 
 #### 第五步：续签与排错
 
