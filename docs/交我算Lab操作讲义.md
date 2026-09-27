@@ -184,7 +184,7 @@ VS Code Remote-SSH 同样选择 `jiaowosuan`。如果普通登录仍要求输入
 应检查文件路径、账号和证书有效期。如果提示 `passphrase`，这是私钥的本地保护
 口令，仍可能需要输入。
 
-**可选验证**：若要确认配置确实能完成证书认证，可临时仅允许公钥认证：
+**可选验证**：可临时仅允许公钥类认证（包括 SSH 证书），避免回退到账号密码：
 
 ```bash
 ssh -o PreferredAuthentications=publickey jiaowosuan
@@ -294,15 +294,19 @@ rsync -av --exclude=".git/" --exclude="build*/" \
 ```bash
 cd ~/course-labs
 srun -p cpu -N 1 -n 1 -c 1 -t 00:20:00 \
-  --cpu-bind=cores --pty /bin/bash
+  --cpu-bind=cores --pty /bin/bash -l
 hostname
 gcc --version
+module avail cmake
+module load cmake
 cmake --version
 ```
 
-只有资源分配完成后才执行编译和实验。当前框架要求 CMake ≥ 3.16。
-若工具不存在或版本过旧，在计算节点运行 `module avail cmake`，然后用
-`module load` 加载列表中实际存在的模块名，再确认版本。
+只有资源分配完成后才执行编译和实验。`/bin/bash -l` 启动登录 shell，以初始化
+计算节点的软件模块环境。`module load cmake` 加载默认版本，当前框架要求 CMake ≥ 3.16。
+若默认模块不可用或版本过旧，从 `module avail cmake` 的结果中选择实际存在的版本，
+再用 `module load 完整模块名` 加载并确认版本。官方 KOS 页面列出的示例是
+`module load cmake/3.26.3-gcc-8.5.0`，以当前节点的实际查询结果为准。
 不要直接在登录节点运行实验。交互调试结束输入 `exit` 释放资源。
 
 ## 3. 在计算节点运行 DataLab
@@ -313,11 +317,14 @@ make -j1
 make selftest
 ./btest -f bitCount
 make grade
+chmod u+x ./dlc
 ./dlc bits.c
 ```
 
 先按题面填写 bits.c 的姓名学号，并完成自己的实现。
-`selftest` 检查测试框架，`grade` 检查学生答案。
+`selftest` 检查测试框架，显示满分也不代表学生答案正确；`grade` 才检查学生答案。
+当前仓库的 `dlc` 没有执行位，首次运行前需执行上面的 `chmod u+x ./dlc`。
+它是 x86-64 Linux 程序，只在对应的 Linux 计算节点运行，不在本地 macOS 或 PowerShell 运行。
 `dlc` 只检查它支持的编码规则，新增 FP8 题需结合题面自行检查。
 
 ## 4. 在计算节点运行 MatrixLab
@@ -337,11 +344,15 @@ done
 
 无需安装 MKL 或 OpenBLAS。ctest 通过仅说明框架和参考 BLAS 自检通过。
 学生函数还需要通过后续各个可执行文件的数值检查。出现 INVALID 时先修正代码。
+初始学生模板中的函数尚未实现，运行这些检查出现 INVALID 和非零退出码是预期结果。
 当前框架已为各测试目标设置相应优化级别，不额外添加全局优化选项。
 
 ## 5. DataLab 批处理脚本
 
 将以下内容保存为远端 course-labs/lab1.slurm：
+
+在 VS Code 中使用 UTF-8 编码、LF 换行保存两个 `.slurm` 文件。Windows 的 CRLF
+换行会导致 `sbatch` 拒绝脚本；可以通过编辑器右下角的换行格式菜单改为 LF。
 
 ```bash
 #!/bin/bash
@@ -362,7 +373,7 @@ make -C labs/lab1-datalab grade
 将以下内容保存为远端 course-labs/lab2.slurm：
 
 ```bash
-#!/bin/bash
+#!/bin/bash -l
 #SBATCH -J matrixlab
 #SBATCH -p cpu -N 1 -n 1 -c 1
 #SBATCH -t 00:20:00
@@ -370,6 +381,7 @@ make -C labs/lab1-datalab grade
 
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
+module load cmake
 B="build/pi2-lab2-$SLURM_JOB_ID"
 cmake -S labs/lab2-matrix -B "$B" \
   -DBUILD_TESTING=ON \
@@ -384,10 +396,13 @@ done
 ```
 
 每个作业生成独立的构建目录。此脚本先完成小规模验证。
-set -euo pipefail 保证失败能反映在作业退出码中。
-若节点需要软件模块，在 cmake 命令之前加入经过确认的 module load 命令。
+`set -euo pipefail` 会在第一个失败步骤处停止，并使作业返回非零；后续测试可能尚未运行。
+脚本自身加载 CMake，不能依赖之前交互计算终端中的环境。模块版本要求与第 2 节一致；
+若默认版本不合适，将脚本中的 `module load cmake` 改成已经确认的完整模块名。
 
 ## 7. 提交与查看状态（登录节点）
+
+若当前终端仍在交互计算节点，先输入 `exit` 返回登录节点，再执行下面的命令。
 
 ```bash
 cd ~/course-labs
@@ -401,11 +416,13 @@ squeue -u "$USER"
 把以下 123456 换成提交后获得的作业编号：
 
 ```bash
-tail -f results/lab2-123456.log
+tail -F results/lab2-123456.log
+# 按 Ctrl-C 结束日志查看，再执行下一条
 sacct -j 123456 --format=JobID,State,ExitCode,Elapsed
 ```
 
-tail -f 用 Ctrl-C 结束查看。PD 表示排队，R 表示运行。
+`tail -F` 会等待尚未创建的日志文件；用 Ctrl-C 结束查看不会取消作业。
+PD 表示排队，R 表示运行。示例日志名和 `sacct` 使用 Lab 2 对应的作业编号。
 确认最终状态、退出码和程序正确性输出。作业从 squeue 消失不代表成功。
 只有确实需要取消时才执行 `scancel 123456`。
 
@@ -436,17 +453,25 @@ done
 
 ## 9. 下载结果（本地电脑）
 
+以下命令适用于 macOS、Linux 和安装了 OpenSSH 的 Windows PowerShell：
+
 ```bash
-mkdir -p pi2-results
-rsync -av \
-  jiaowosuan-data:course-labs/results/ \
-  ./pi2-results/
+mkdir pi2-results
+scp -r jiaowosuan-data:course-labs/results ./pi2-results/
 ```
 
-按实验批次保存日志。关闭 SSH 通常不会停止已提交的 sbatch 作业。
+结果保存在 `pi2-results/results/`。若 `pi2-results` 已存在，先核对版本，或新建一个
+带日期的目录并同步替换目标路径。按实验批次保存日志。
 
-Windows 或未安装 rsync 的电脑可在本地新建的收集目录中执行
-`scp -r jiaowosuan-data:course-labs/results ./`，下载整个 results 子目录。
+macOS / Linux 已安装 rsync 时，也可用以下命令替代上面的 scp；目标父目录须已创建：
+
+```bash
+rsync -av \
+  jiaowosuan-data:course-labs/results/ \
+  ./pi2-results/results/
+```
+
+Windows 默认不提供 rsync，使用上面的 scp 即可。关闭 SSH 通常不会停止已提交的 sbatch 作业。
 
 ## 10. 通过交大云盘提交作业
 
@@ -488,5 +513,6 @@ Lab 1 为 bits.c，Lab 2 为 mygemm.c，分别上传对应的“源码提交”�
 - [Slurm 作业管理](https://docs.hpc.sjtu.edu.cn/job/slurm.html)
 - [队列说明](https://docs.hpc.sjtu.edu.cn/job/partition.html)
 - [π 2.0 CPU 环境](https://docs.hpc.sjtu.edu.cn/job/kos.html)
+- [软件模块使用方法](https://docs.hpc.sjtu.edu.cn/app/module.html)
 
 命令依据 2026-09-27 的课程仓库和平台文档整理。队列权限与软件环境以实际账号查询为准。
