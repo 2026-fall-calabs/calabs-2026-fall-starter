@@ -306,56 +306,74 @@ cmake --version
 编译、测试和交互终端空闲均计入时限；提前结束就会提前释放资源。
 
 只有资源分配完成后才执行编译和实验。`/bin/bash -l` 启动登录 shell，以初始化
-计算节点的软件模块环境。`module load cmake` 加载默认版本，当前框架要求 CMake ≥ 3.16。
+计算节点的软件模块环境。`module load cmake` 加载默认版本，本教程命令建议 CMake/CTest ≥ 3.20。
 若默认模块不可用或版本过旧，从 `module avail cmake` 的结果中选择实际存在的版本，
-再用 `module load 完整模块名` 加载并确认版本。官方 KOS 页面列出的示例是
+再用 `module load 完整模块名` 加载并确认版本。3.16～3.19 的 CTest 兼容写法见第 4 节。官方 KOS 页面列出的示例是
 `module load cmake/3.26.3-gcc-8.5.0`，以当前节点的实际查询结果为准。
 不要直接在登录节点运行实验。交互调试结束输入 `exit` 释放资源。
 
 ## 3. 在计算节点运行 DataLab
 
+按 [Lab 1 README 第 3、10、11 节](../labs/lab1-datalab/README.md)，先在 `bits.c`
+填写姓名和学号，再编译、做单题测试、运行全部测试和查看评分表：
+
 ```bash
 cd ~/course-labs/labs/lab1-datalab
-make -j1
-make selftest
+make
 ./btest -f bitCount
-make grade
+./btest
+./btest -g
 chmod u+x ./dlc
 ./dlc bits.c
 ```
 
-先按题面填写 bits.c 的姓名学号，并完成自己的实现。
-`selftest` 检查测试框架，显示满分也不代表学生答案正确；`grade` 才检查学生答案。
-当前仓库的 `dlc` 没有执行位，首次运行前需执行上面的 `chmod u+x ./dlc`。
-它是 x86-64 Linux 程序，只在对应的 Linux 计算节点运行，不在本地 macOS 或 PowerShell 运行。
-`dlc` 只检查它支持的编码规则，新增 FP8 题需结合题面自行检查。
+每次修改 `bits.c` 后重新运行 `make`。`./btest -g` 与 `make grade` 都用于查看学生
+答案的评分表，当前正确性满分为 50 分。`make selftest` 仅是框架自检，不替代学生答案测试。
+`dlc` 是 x86-64 Linux 程序；它不支持新增 FP8 题的全部规则，FP8 的编码限制需要另行核对。
+提交前按 README 第 13 节执行 `make clean && make`，再用 `./btest -g` 确认得分。
 
-## 4. 在计算节点运行 MatrixLab
+## 4. 在计算节点编译并检查 MatrixLab
+
+与 [Lab 2 README 第 5 节](../labs/lab2-matrix/README.md) 使用同一套 `build/` 目录。
+在新下载的源码目录中配置，保留框架默认的内置 BLAS 和 CTest 设置：
 
 ```bash
 cd ~/course-labs/labs/lab2-matrix
-cmake -S . -B build-pi2 -DBUILD_TESTING=ON \
-  -DLAB_USE_SYSTEM_BLAS=OFF
-cmake --build build-pi2 --parallel 1
-(cd build-pi2 && ctest --output-on-failure)
-./build-pi2/reg_reuse 6 12 24 48
-./build-pi2/cache_part3 48 6
-for opt in 0 1 2 3; do
-  ./build-pi2/cache_part4_o${opt} 48 6
-done
+cmake -S . -B build
+cmake --build build -j1
+ctest --test-dir build --output-on-failure
 ```
 
-无需安装 MKL 或 OpenBLAS。ctest 通过仅说明框架和参考 BLAS 自检通过。
-学生函数还需要通过后续各个可执行文件的数值检查。出现 INVALID 时先修正代码。
-初始学生模板中的函数尚未实现，运行这些检查出现 INVALID 和非零退出码是预期结果。
-当前框架已为各测试目标设置相应优化级别，不额外添加全局优化选项。
+交我算只申请了一个 CPU 核心，因此把 README 中的 `-j` 明确限制为 `-j1`。
+其他路径、构建目标与正式流程一致。不要上传本地 `build/` 或 `CMakeCache.txt`。
+`ctest --test-dir` 需要 CMake/CTest ≥ 3.20。若模块只有 3.16～3.19，最后一行改为：
+
+```bash
+(cd build && ctest --output-on-failure)
+```
+
+框架本身的最低版本仍为 CMake 3.16。两个 CTest 测试只检查框架和参考 BLAS，
+学生矩阵函数需按 README 第 7.2 节执行：
+
+```bash
+cmake --build build -j1
+./build/reg_reuse 6 12 24 48
+./build/cache_part3 48 6
+./build/cache_part4_o0 48 6
+./build/cache_part4_o1 48 6
+./build/cache_part4_o2 48 6
+./build/cache_part4_o3 48 6
+```
+
+上述命令在 `~/course-labs/labs/lab2-matrix` 中执行。空模板出现 `INVALID`、返回非零
+是预期行为。完成相应函数并通过小规模检查后，再进行正式测量。
+编译目标已固定：`reg_reuse`、`cache_part3` 为 `-O0`，`cache_part4_o0`～`o3` 对应四个优化级别。
+不要另加全局优化选项。更新源码后运行 `cmake --build build -j1`。
 
 ## 5. DataLab 批处理脚本
 
-将以下内容保存为远端 course-labs/lab1.slurm：
-
-在 VS Code 中使用 UTF-8 编码、LF 换行保存两个 `.slurm` 文件。Windows 的 CRLF
-换行会导致 `sbatch` 拒绝脚本；可以通过编辑器右下角的换行格式菜单改为 LF。
+将以下内容保存为仓库根目录 `course-labs/lab1.slurm`。使用 UTF-8 编码、LF 换行。
+先填写个人信息并完成代码。编码规则检查按第 3 节另行执行：
 
 ```bash
 #!/bin/bash
@@ -365,15 +383,15 @@ done
 #SBATCH -o results/lab1-%j.log
 
 set -euo pipefail
-cd "$SLURM_SUBMIT_DIR"
-make -C labs/lab1-datalab -j1
-make -C labs/lab1-datalab selftest
-make -C labs/lab1-datalab grade
+cd "$SLURM_SUBMIT_DIR/labs/lab1-datalab"
+make
+./btest -g
 ```
 
 ## 6. MatrixLab 批处理脚本
 
-将以下内容保存为远端 course-labs/lab2.slurm：
+将以下内容保存为仓库根目录 `course-labs/lab2.slurm`，使用 UTF-8 / LF。
+示例在完成小规模检查后运行 README 第 8.3 节的正式循环次序实验：
 
 ```bash
 #!/bin/bash -l
@@ -384,39 +402,42 @@ make -C labs/lab1-datalab grade
 
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
+cd labs/lab2-matrix
 module load cmake
-B="build/pi2-lab2-$SLURM_JOB_ID"
-cmake -S labs/lab2-matrix -B "$B" \
-  -DBUILD_TESTING=ON \
-  -DLAB_USE_SYSTEM_BLAS=OFF
-cmake --build "$B" --parallel 1
-(cd "$B" && ctest --output-on-failure)
-srun --cpu-bind=cores "$B/reg_reuse" 6 12 24 48
-srun --cpu-bind=cores "$B/cache_part3" 48 6
-for opt in 0 1 2 3; do
-  srun --cpu-bind=cores "$B/cache_part4_o$opt" 48 6
-done
+cmake -S . -B build
+cmake --build build -j1
+ctest --test-dir build --output-on-failure
+mkdir -p results
+
+srun --cpu-bind=cores \
+  ./build/cache_part3 2048 64 \
+  2>&1 | tee results/loop_orders.txt
 ```
 
-每个作业生成独立的构建目录。此脚本先完成小规模验证。
-`set -euo pipefail` 会在第一个失败步骤处停止，并使作业返回非零；后续测试可能尚未运行。
-脚本自身加载 CMake，不能依赖之前交互计算终端中的环境。模块版本要求与第 2 节一致；
-若默认版本不合适，将脚本中的 `module load cmake` 改成已经确认的完整模块名。
+每次只运行一个阶段：保留编译、CTest 和结果目录准备，将脚本最后的实验命令替换为
+第 8 节对应代码块。脚本使用 `set -euo pipefail`，实验失败会返回非零，`tee` 不会掩盖错误。
+若只使用 CMake 3.16～3.19，按第 4 节替换 CTest 命令。模块名称以实际列表为准。
+
+同一份 Lab 2 目录一次只运行一个作业。作业结束后再修改源码、重编译或提交下一阶段，
+避免争用同一个 `build/` 和覆盖 `results/`。每个阶段默认最多运行 2 小时，按实测耗时
+分批或调整时限。重复测量之前保存上一批日志。
+
+Slurm 总日志位于仓库根目录 `course-labs/results/`，README 指定的实验数据文件位于
+`course-labs/labs/lab2-matrix/results/`。两者都需要下载。
 
 ## 7. 提交与查看状态（登录节点）
 
-若当前终端仍在交互计算节点，先输入 `exit` 返回登录节点，再执行下面的命令。
+若当前终端仍在交互计算节点，先输入 `exit` 返回登录节点。以 Lab 2 为例：
 
 ```bash
 cd ~/course-labs
 mkdir -p results
-sbatch lab1.slurm
 sbatch lab2.slurm
 squeue -u "$USER"
 ```
 
-必须在提交前创建 results/，因为 Slurm 会在脚本开始前打开日志文件。
-把以下 123456 换成提交后获得的作业编号：
+Lab 1 使用 `sbatch lab1.slurm`。必须在提交前创建根目录 `results/`，因为 Slurm 会在
+脚本开始前打开日志文件。将下面的 `123456` 替换为本次提交返回的作业编号：
 
 ```bash
 tail -F results/lab2-123456.log
@@ -424,58 +445,150 @@ tail -F results/lab2-123456.log
 sacct -j 123456 --format=JobID,State,ExitCode,Elapsed
 ```
 
-`tail -F` 会等待尚未创建的日志文件；用 Ctrl-C 结束查看不会取消作业。
-PD 表示排队，R 表示运行。示例日志名和 `sacct` 使用 Lab 2 对应的作业编号。
-确认最终状态、退出码和程序正确性输出。作业从 squeue 消失不代表成功。
-只有确实需要取消时才执行 `scancel 123456`。
+`tail -F` 会等待日志出现。Ctrl-C 结束查看，不会取消作业。PD 表示排队，R 表示运行。
+只有 `COMPLETED`、`ExitCode=0:0` 且实验正确性输出通过，才确认该次作业成功。
+确实需要取消时，在登录节点执行 `scancel 123456`。
 
-## 8. 正式性能实验
+## 8. 按 README 进行正式性能实验
 
-先完成小规模检查，再按课程统一题面设置 n、b 和重复次数。脚本默认时限为 2 小时，
-正式实验按实测耗时分批运行或调整 `#SBATCH -t` 时限。
-当前源码的默认参数如下，它们用于解释当前程序行为，不能替代课程正式要求：
+以下流程对应 [Lab 2 README 第 8、9 节](../labs/lab2-matrix/README.md)。第 8.1～8.5 节
+代码块用于替换第 6 节 `lab2.slurm` 的实验段，每次选一个阶段。保留脚本前面的编译、
+CTest、`mkdir -p results` 和 `set -euo pipefail`。脚本已经进入 Lab 2 目录。
+矩阵规模、块大小候选值和结果文件名与 README 一致；批处理中的程序命令前增加
+`srun --cpu-bind=cores` 以绑定分配的 CPU。
 
-| 程序 | 当前驱动默认参数 |
-| --- | --- |
-| reg_reuse | 66、126、258、510、1026、2046 |
-| cache_part3 | n=2000，b=10 |
-| cache_part4_o0..o3 | n=2040，b=60 |
+若在前面 `srun --pty` 打开的交互式计算终端手动运行，直接使用 README 中不带
+`srun --cpu-bind=cores` 前缀的程序命令。该终端已绑定 CPU，无需再嵌套启动 `srun`。
+运行前在 Lab 2 目录创建 `results/`，并保存每条命令的正确性结果。
 
-当前 dgemm3 的约定涉及 6 的倍数。若题面规模与整除条件冲突，先由教师统一，学生不要自行改变实验口径。
-以下仅演示怎样在 lab2.slurm 末尾追加重复运行，不定义正式规模：
+### 8.1 寄存器复用（README §8.2）
+
+> **题面待统一：** README §6.4 的“n 可被 6 整除”与 §8.2 的正式规模冲突，需教师统一后执行寄存器实验。 当前参考实现 `dgemm3` 在 `n=64` 时会输出 `INVALID`。
+> 下方忠实列出第 8.2 节命令，不代表这处冲突已解决；学生不要自行改动正式规模。
 
 ```bash
-for rep in 1 2 3; do
-  srun --cpu-bind=cores "$B/cache_part4_o3" 2040 60
+srun --cpu-bind=cores ./build/reg_reuse 64 128 256 512 1024 2048 \
+  2>&1 | tee results/register_reuse.txt
+```
+
+记录 `dgemm0`～`dgemm3` 的正确性、时间和 GFLOP/s。
+
+### 8.2 循环次序（README §8.3）
+
+```bash
+srun --cpu-bind=cores ./build/cache_part3 2048 64 \
+  2>&1 | tee results/loop_orders.txt
+```
+
+记录六种非分块循环次序。该程序也会执行六个分块函数；全部函数需正确实现。
+
+### 8.3 块大小筛选（README §8.4）
+
+固定 `n=1024`，测试 `b=16、32、64、128、256`，记录六个分块函数：
+
+```bash
+: > results/cache_block_sweep.txt
+
+for b in 16 32 64 128 256; do
+  echo "===== block_size=${b} =====" | tee -a results/cache_block_sweep.txt
+  srun --cpu-bind=cores ./build/cache_part3 1024 "$b" \
+    2>&1 | tee -a results/cache_block_sweep.txt
 done
 ```
 
-对 O0、O1、O2、O3 的比较须保持同样的 n 和 b。
-建议每种配置串行运行 3 次，记录中位数，并记录 hostname、lscpu、gcc --version、编译选项及正确性状态。
-绑核降低迁移带来的干扰，共享节点仍可能有缓存、带宽和频率干扰。
-当前 scripts/submit.sh 只是本地运行包装，不调用 sbatch，不要在登录节点直接执行它。
+非分块结果与 b 无关，按 README 记录第一次即可。选出两个最佳候选后在 `n=2048` 确认：
+
+```bash
+: > results/cache_block_2048.txt
+
+for b in 64 128; do
+  echo "===== n=2048, block_size=${b} =====" \
+    | tee -a results/cache_block_2048.txt
+  srun --cpu-bind=cores ./build/cache_part3 2048 "$b" \
+    2>&1 | tee -a results/cache_block_2048.txt
+done
+```
+
+上面的 64、128 是示例，要换成实际候选值。根据确认结果选择最终块大小。
+
+### 8.4 编译优化级别（README §8.5）
+
+下例假设最终块大小为 64。四个优化级别使用相同的 `n=2048` 和同一个实际最佳块大小：
+
+```bash
+for opt in 0 1 2 3; do
+  srun --cpu-bind=cores ./build/cache_part4_o${opt} 2048 64 \
+    2>&1 | tee "results/optimal_O${opt}.txt"
+done
+```
+
+### 8.5 重复测量（README §8.6）
+
+每种正式配置建议重复 3 次并取中位数，下面用 O3 举例，块大小仍替换为实际值：
+
+```bash
+: > results/optimal_O3_repeated.txt
+
+for run in 1 2 3; do
+  echo "===== run=${run} =====" | tee -a results/optimal_O3_repeated.txt
+  srun --cpu-bind=cores ./build/cache_part4_o3 2048 64 \
+    2>&1 | tee -a results/optimal_O3_repeated.txt
+done
+```
+
+重复期间保持源码、编译选项、矩阵规模、块大小和 CPU 型号一致。
+绑核减少进程迁移，共享节点仍可能存在缓存、带宽和频率干扰。
+`tee` 和 `: >` 会覆盖同名文件，重跑前先保存上一批结果。
+
+### 8.6 环境记录和报告（README §9）
+
+在实际运行实验的计算节点记录环境：
+
+```bash
+{
+  echo "===== CPU ====="
+  lscpu
+  echo "===== Compiler ====="
+  gcc --version
+  echo "===== CMake ====="
+  cmake --version
+  echo "===== System ====="
+  uname -a
+} > results/environment.txt
+```
+
+另外记录 `hostname`、作业编号、各目标编译选项和正确性状态。
+使用 Clang 时，将 `gcc --version` 改为 `clang --version`。
+报告按 README 第 9 节整理四张表和四类图：寄存器复用、循环次序、缓存块大小、综合优化。
+图中注明坐标轴、单位、n 和 b。块大小实验应包含两个候选值在 2048 下的确认结果。
+
+### 8.7 可选的默认批量检查（README §8.7）
+
+全部函数正确后，可以在已申请的计算节点运行：
+
+```bash
+bash scripts/run_all.sh mydata.txt
+```
+
+结果位于 `labs/lab2-matrix/results/mydata.txt`。此脚本读取相同的 `build/`，但是使用程序
+默认参数：寄存器 66、126、258、510、1026、2046；Part 3 为 2000/10；Part 4 为 2040/60。
+它用于额外批量检查，不能替代前面按 README 第 8.2～8.6 节收集的正式数据。
+`scripts/submit.sh` 只是本地运行包装，不调用 `sbatch`，不要在登录节点运行实验脚本。
 
 ## 9. 下载结果（本地电脑）
 
-以下命令适用于 macOS、Linux 和安装了 OpenSSH 的 Windows PowerShell：
+以下命令适用于 macOS、Linux 和安装了 OpenSSH 的 Windows PowerShell。
+使用新的本地 `pi2-results` 目录，分别下载 Slurm 总日志和 Lab 2 实验数据：
 
 ```bash
 mkdir pi2-results
-scp -r jiaowosuan-data:course-labs/results ./pi2-results/
+scp -r jiaowosuan-data:course-labs/results ./pi2-results/slurm
+scp -r jiaowosuan-data:course-labs/labs/lab2-matrix/results ./pi2-results/lab2
 ```
 
-结果保存在 `pi2-results/results/`。若 `pi2-results` 已存在，先核对版本，或新建一个
-带日期的目录并同步替换目标路径。按实验批次保存日志。
-
-macOS / Linux 已安装 rsync 时，也可用以下命令替代上面的 scp；目标父目录须已创建：
-
-```bash
-rsync -av \
-  jiaowosuan-data:course-labs/results/ \
-  ./pi2-results/results/
-```
-
-Windows 默认不提供 rsync，使用上面的 scp 即可。关闭 SSH 通常不会停止已提交的 sbatch 作业。
+Slurm 日志位于 `pi2-results/slurm/`，实验数据与环境记录位于 `pi2-results/lab2/`。
+若目标已存在，先核对版本并换一个带批次名称的新目录，以免混入旧结果。
+只运行 Lab 1 时，下载 Slurm 日志即可。关闭 SSH 不会停止已经提交成功的 `sbatch` 作业。
 
 ## 10. 通过交大云盘提交作业
 
@@ -517,6 +630,7 @@ Lab 1 为 bits.c，Lab 2 为 mygemm.c，分别上传对应的“源码提交”�
 - [Slurm 作业管理](https://docs.hpc.sjtu.edu.cn/job/slurm.html)
 - [队列说明](https://docs.hpc.sjtu.edu.cn/job/partition.html)
 - [π 2.0 CPU 环境](https://docs.hpc.sjtu.edu.cn/job/kos.html)
+- [CMake 3.20 的 CTest --test-dir 支持](https://cmake.org/cmake/help/v3.20/release/3.20.html#ctest)
 - [软件模块使用方法](https://docs.hpc.sjtu.edu.cn/app/module.html)
 
 命令依据 2026-09-27 的课程仓库和平台文档整理。队列权限与软件环境以实际账号查询为准。
