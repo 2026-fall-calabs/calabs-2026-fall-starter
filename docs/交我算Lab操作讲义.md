@@ -371,7 +371,7 @@ cmake --build build -j1
 
 ## 5. DataLab 批处理脚本
 
-课程根目录已提供 [lab1.slurm](../lab1.slurm)，无需手动创建。先填写个人信息并完成代码。
+课程已提供 [slurm/lab1-10.slurm](../slurm/lab1-10.slurm)，无需手动创建。先填写个人信息并完成代码。
 默认执行全部评分；传入函数名可以单题测试。编码规则检查按第 3 节另行执行。
 
 ```bash
@@ -385,7 +385,7 @@ set -euo pipefail
 : "${SLURM_JOB_ID:?请使用 sbatch 提交作业，不要在登录节点直接运行}"
 
 if (( $# > 1 )); then
-  echo "用法：sbatch lab1.slurm [函数名]" >&2
+  echo "用法：sbatch slurm/lab1-10.slurm [函数名]" >&2
   exit 2
 fi
 cd "${SLURM_SUBMIT_DIR:?请从课程根目录提交}/labs/lab1-datalab"
@@ -399,7 +399,7 @@ fi
 
 ## 6. MatrixLab 批处理脚本
 
-课程根目录已提供 [lab2.slurm](../lab2.slurm)，用于 README 第 8.3 节的正式循环次序实验。
+课程已提供 [slurm/lab2-8.3.slurm](../slurm/lab2-8.3.slurm)，用于 README 第 8.3 节的正式循环次序实验。
 其他阶段各有独立脚本，完整列表见 [Slurm 脚本与提交命令](../slurm/README.md)。
 先完成相应函数并通过小规模检查，再提交正式实验：
 
@@ -452,11 +452,11 @@ Slurm 总日志位于课程根目录 `course-labs/results/`，README 指定的�
 ```bash
 cd ~/course-labs
 mkdir -p results
-sbatch lab2.slurm
+sbatch slurm/lab2-8.3.slurm
 squeue -u "$USER"
 ```
 
-Lab 1 使用 `sbatch lab1.slurm`。必须在提交前创建根目录 `results/`，因为 Slurm 会在
+Lab 1 使用 `sbatch slurm/lab1-10.slurm`。必须在提交前创建根目录 `results/`，因为 Slurm 会在
 脚本开始前打开日志文件。将下面的 `123456` 替换为本次提交返回的作业编号：
 
 ```bash
@@ -477,13 +477,13 @@ sacct -j 123456 --format=JobID,State,ExitCode,Elapsed
 
 | 阶段 | 提交命令 |
 | --- | --- |
-| 小规模正确性检查 | `sbatch slurm/lab2-check.slurm` |
-| 寄存器复用 | `sbatch slurm/lab2-register.slurm` |
-| 循环次序 | `sbatch lab2.slurm` |
-| 块大小筛选 | `sbatch slurm/lab2-block-sweep.slurm` |
-| 两个候选值确认 | `sbatch slurm/lab2-block-confirm.slurm 64 128` |
-| 四个优化级别 | `sbatch slurm/lab2-opt-levels.slurm 64` |
-| O3 重复三次 | `sbatch slurm/lab2-repeat.slurm 64` |
+| 小规模正确性检查 | `sbatch slurm/lab2-7.2.slurm` |
+| 寄存器复用 | `sbatch slurm/lab2-8.2.slurm` |
+| 循环次序 | `sbatch slurm/lab2-8.3.slurm` |
+| 块大小筛选 | `sbatch slurm/lab2-8.4-block-sweep.slurm` |
+| 两个候选值确认 | `sbatch slurm/lab2-8.4-block-confirm.slurm 64 128` |
+| 四个优化级别 | `sbatch slurm/lab2-8.5.slurm 64` |
+| O3 重复三次 | `sbatch slurm/lab2-8.6.slurm 64` |
 
 表中 `64 128` 和 `64` 只是示例，必须换成实测候选值或最终最佳块大小。
 脚本会自行进入 Lab 2 目录、编译、运行 CTest 并创建实验数据目录。
@@ -612,7 +612,7 @@ Part 4 为 2040/60，这两项仍与正式实验参数不同。
 
 ```bash
 mkdir -p results
-sbatch slurm/lab2-default-all.slurm
+sbatch slurm/lab2-8.7.slurm
 ```
 
 ## 9. 下载结果（本地电脑）

@@ -8,7 +8,7 @@ set -euo pipefail
 : "${SLURM_JOB_ID:?请使用 sbatch 提交作业，不要在登录节点直接运行}"
 
 if (( $# > 1 )); then
-  echo "用法：sbatch lab1.slurm [函数名]" >&2
+  echo "用法：sbatch slurm/lab1-10.slurm [函数名]" >&2
   exit 2
 fi
 cd "${SLURM_SUBMIT_DIR:?请从课程根目录提交}/labs/lab1-datalab"

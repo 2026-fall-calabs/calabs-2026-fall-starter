@@ -54,7 +54,7 @@ student_struct student =
 
 推荐使用课程提供的 Linux 容器、Ubuntu 22.04 或 openEuler 24.03。需要 GCC 和 GNU Make。
 
-交我算批处理可使用课程根目录提供的 [lab1.slurm](../../lab1.slurm)。
+交我算批处理可使用课程提供的 [slurm/lab1-10.slurm](../../slurm/lab1-10.slurm)。
 提交前先填写姓名和学号，具体命令见 [Slurm 使用说明](../../slurm/README.md)。
 
 从课程仓库根目录进入实验目录并编译：

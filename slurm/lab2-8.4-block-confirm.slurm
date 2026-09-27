@@ -1,14 +1,14 @@
 #!/bin/bash -l
-#SBATCH -J matrix-repeat
+#SBATCH -J matrix-confirm
 #SBATCH -p cpu -N 1 -n 1 -c 1
 #SBATCH -t 03:00:00
-#SBATCH -o results/lab2-repeat-%j.log
+#SBATCH -o results/lab2-block-confirm-%j.log
 
 set -euo pipefail
 : "${SLURM_JOB_ID:?请使用 sbatch 提交作业，不要在登录节点直接运行}"
 
-if (( $# != 1 )); then
-  echo "用法：sbatch slurm/lab2-repeat.slurm 最佳b" >&2
+if (( $# != 2 )); then
+  echo "用法：sbatch slurm/lab2-8.4-block-confirm.slurm 候选b1 候选b2" >&2
   exit 2
 fi
 for b in "$@"; do
@@ -17,6 +17,11 @@ for b in "$@"; do
     *) echo "块大小必须从 16、32、64、128、256 中选择。" >&2; exit 2 ;;
   esac
 done
+
+if [[ "$1" == "$2" ]]; then
+  echo "请传入两个不同的候选块大小。" >&2
+  exit 2
+fi
 
 cd "${SLURM_SUBMIT_DIR:?请从课程根目录提交}/labs/lab2-matrix"
 module load "${CMAKE_MODULE:-cmake}"
@@ -34,11 +39,10 @@ mkdir -p results
   uname -a
 } | tee results/environment.txt
 
-# README §8.6：以 O3 为例，按同一配置重复三次。
-best_b="$1"
-: > results/optimal_O3_repeated.txt
-for run in 1 2 3; do
-  echo "===== run=${run} =====" | tee -a results/optimal_O3_repeated.txt
-  srun --cpu-bind=cores ./build/cache_part4_o3 2048 "$best_b" \
-    2>&1 | tee -a results/optimal_O3_repeated.txt
+# README §8.4：传入在 n=1024 时选出的两个候选值。
+: > results/cache_block_2048.txt
+for b in "$@"; do
+  echo "===== n=2048, block_size=${b} =====" | tee -a results/cache_block_2048.txt
+  srun --cpu-bind=cores ./build/cache_part3 2048 "$b" \
+    2>&1 | tee -a results/cache_block_2048.txt
 done

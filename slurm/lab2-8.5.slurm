@@ -1,14 +1,14 @@
 #!/bin/bash -l
-#SBATCH -J matrix-confirm
+#SBATCH -J matrix-opt
 #SBATCH -p cpu -N 1 -n 1 -c 1
 #SBATCH -t 03:00:00
-#SBATCH -o results/lab2-block-confirm-%j.log
+#SBATCH -o results/lab2-opt-levels-%j.log
 
 set -euo pipefail
 : "${SLURM_JOB_ID:?请使用 sbatch 提交作业，不要在登录节点直接运行}"
 
-if (( $# != 2 )); then
-  echo "用法：sbatch slurm/lab2-block-confirm.slurm 候选b1 候选b2" >&2
+if (( $# != 1 )); then
+  echo "用法：sbatch slurm/lab2-8.5.slurm 最佳b" >&2
   exit 2
 fi
 for b in "$@"; do
@@ -17,11 +17,6 @@ for b in "$@"; do
     *) echo "块大小必须从 16、32、64、128、256 中选择。" >&2; exit 2 ;;
   esac
 done
-
-if [[ "$1" == "$2" ]]; then
-  echo "请传入两个不同的候选块大小。" >&2
-  exit 2
-fi
 
 cd "${SLURM_SUBMIT_DIR:?请从课程根目录提交}/labs/lab2-matrix"
 module load "${CMAKE_MODULE:-cmake}"
@@ -39,10 +34,9 @@ mkdir -p results
   uname -a
 } | tee results/environment.txt
 
-# README §8.4：传入在 n=1024 时选出的两个候选值。
-: > results/cache_block_2048.txt
-for b in "$@"; do
-  echo "===== n=2048, block_size=${b} =====" | tee -a results/cache_block_2048.txt
-  srun --cpu-bind=cores ./build/cache_part3 2048 "$b" \
-    2>&1 | tee -a results/cache_block_2048.txt
+# README §8.5：四个优化级别使用同一个实际最佳块大小。
+best_b="$1"
+for opt in 0 1 2 3; do
+  srun --cpu-bind=cores "./build/cache_part4_o${opt}" 2048 "$best_b" \
+    2>&1 | tee "results/optimal_O${opt}.txt"
 done

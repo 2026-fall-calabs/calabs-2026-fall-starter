@@ -1,6 +1,6 @@
 # 交我算 Slurm 实验脚本
 
-脚本已经随课程提供。默认申请 CPU 队列的 **1 个节点、1 个进程、1 个 CPU 核心、3 小时**（`03:00:00`）。计时从资源分配后开始，包括编译、框架检查和实验运行，不含排队时间。
+所有脚本集中在课程根目录的 `slurm/` 文件夹中，已经随课程提供。默认申请 CPU 队列的 **1 个节点、1 个进程、1 个 CPU 核心、3 小时**（`03:00:00`）。计时从资源分配后开始，包括编译、框架检查和实验运行，不含排队时间。
 
 ## 提交前
 
@@ -16,24 +16,26 @@ mkdir -p results
 
 ## 实验与提交命令
 
-| 实验 | 在课程根目录提交 | 实验参数或用途 |
-| --- | --- | --- |
-| Lab 1 全部测试与评分 | `sbatch lab1.slurm` | 编译后运行 `btest -g` |
-| Lab 2 快速检查 | `sbatch slurm/lab2-check.slurm` | 寄存器 `6 12 24 48`，缓存及综合优化 `48 6` |
-| 寄存器复用 | `sbatch slurm/lab2-register.slurm` | `66 126 258 510 1026 2046`，均能被 6 整除 |
-| 循环次序 | `sbatch lab2.slurm` | `n=2048`、`b=64`，同时运行六个分块函数 |
-| 缓存块大小筛选 | `sbatch slurm/lab2-block-sweep.slurm` | `n=1024`，`b=16、32、64、128、256` |
-| 候选块大小确认 | `sbatch slurm/lab2-block-confirm.slurm 64 128` | `n=2048`，传入两个实际候选值 |
-| 编译优化级别比较 | `sbatch slurm/lab2-opt-levels.slurm 64` | `n=2048`，O0～O3 使用同一个实际最佳 `b` |
-| O3 重复测量 | `sbatch slurm/lab2-repeat.slurm 64` | `n=2048`，按实际最佳 `b` 重复三次 |
-| 可选默认批量检查 | `sbatch slurm/lab2-default-all.slurm` | 执行 `run_all.sh` 的默认参数，仅作额外检查 |
+文件名中的编号对应各 Lab README 的小节。一个小节有多份实验脚本时，加上实验内容后缀；例如 8.4 的 `block-sweep` 表示初筛，`block-confirm` 表示候选确认。
+
+| README 小节 | 实验 | 在课程根目录提交 | 实验参数或用途 |
+| --- | --- | --- | --- |
+| Lab1 §10 | Lab 1 全部测试与评分 | `sbatch slurm/lab1-10.slurm` | 编译后运行 `btest -g` |
+| Lab2 §7.2 | Lab 2 快速检查 | `sbatch slurm/lab2-7.2.slurm` | 寄存器 `6 12 24 48`，缓存及综合优化 `48 6` |
+| Lab2 §8.2 | 寄存器复用 | `sbatch slurm/lab2-8.2.slurm` | `66 126 258 510 1026 2046`，均能被 6 整除 |
+| Lab2 §8.3 | 循环次序 | `sbatch slurm/lab2-8.3.slurm` | `n=2048`、`b=64`，同时运行六个分块函数 |
+| Lab2 §8.4 | 缓存块大小筛选 | `sbatch slurm/lab2-8.4-block-sweep.slurm` | `n=1024`，`b=16、32、64、128、256` |
+| Lab2 §8.4 | 候选块大小确认 | `sbatch slurm/lab2-8.4-block-confirm.slurm 64 128` | `n=2048`，传入两个实际候选值 |
+| Lab2 §8.5 | 编译优化级别比较 | `sbatch slurm/lab2-8.5.slurm 64` | `n=2048`，O0～O3 使用同一个实际最佳 `b` |
+| Lab2 §8.6 | O3 重复测量 | `sbatch slurm/lab2-8.6.slurm 64` | `n=2048`，按实际最佳 `b` 重复三次 |
+| Lab2 §8.7 | 可选默认批量检查 | `sbatch slurm/lab2-8.7.slurm` | 执行 `run_all.sh` 的默认参数，仅作额外检查 |
 
 表格中的 `64 128` 和最佳 `b=64` 都是示例。请按上一阶段的测量结果替换。候选确认脚本要求两个不同的候选值；三个需要块大小参数的脚本均从 `16、32、64、128、256` 中选择，缺少或传错参数会退出。
 
 Lab 1 也支持只测一道题，例如：
 
 ```bash
-sbatch lab1.slurm bitCount
+sbatch slurm/lab1-10.slurm bitCount
 ```
 
 Lab 1 编码规则检查仍按 [Lab 1 README](../labs/lab1-datalab/README.md) 执行。Lab 2 的正式数据要求见 [Lab 2 README 第 8、9 节](../labs/lab2-matrix/README.md)。
@@ -65,7 +67,7 @@ sacct -j 123456 --format=JobID,State,ExitCode,Elapsed
 
 ```bash
 export CMAKE_MODULE="实际存在的完整模块名"
-sbatch slurm/lab2-check.slurm
+sbatch slurm/lab2-7.2.slurm
 ```
 
 该变量只影响当前终端提交的 Lab 2 作业。不要向交我算上传本地 `build/` 或 `CMakeCache.txt`。
