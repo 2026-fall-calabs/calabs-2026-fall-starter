@@ -293,7 +293,7 @@ rsync -av --exclude=".git/" --exclude="build*/" \
 
 ```bash
 cd ~/course-labs
-srun -p cpu -N 1 -n 1 -c 1 -t 00:20:00 \
+srun -p cpu -N 1 -n 1 -c 1 -t 02:00:00 \
   --cpu-bind=cores --pty /bin/bash -l
 hostname
 gcc --version
@@ -301,6 +301,9 @@ module avail cmake
 module load cmake
 cmake --version
 ```
+
+本教程统一申请最长 2 小时运行时间（`02:00:00`），不含排队时间。
+编译、测试和交互终端空闲均计入时限；提前结束就会提前释放资源。
 
 只有资源分配完成后才执行编译和实验。`/bin/bash -l` 启动登录 shell，以初始化
 计算节点的软件模块环境。`module load cmake` 加载默认版本，当前框架要求 CMake ≥ 3.16。
@@ -358,7 +361,7 @@ done
 #!/bin/bash
 #SBATCH -J datalab
 #SBATCH -p cpu -N 1 -n 1 -c 1
-#SBATCH -t 00:20:00
+#SBATCH -t 02:00:00
 #SBATCH -o results/lab1-%j.log
 
 set -euo pipefail
@@ -376,7 +379,7 @@ make -C labs/lab1-datalab grade
 #!/bin/bash -l
 #SBATCH -J matrixlab
 #SBATCH -p cpu -N 1 -n 1 -c 1
-#SBATCH -t 00:20:00
+#SBATCH -t 02:00:00
 #SBATCH -o results/lab2-%j.log
 
 set -euo pipefail
@@ -428,7 +431,8 @@ PD 表示排队，R 表示运行。示例日志名和 `sacct` 使用 Lab 2 对�
 
 ## 8. 正式性能实验
 
-先完成小规模检查，再按课程统一题面设置 n、b 和重复次数，并相应增加 #SBATCH -t 时限。
+先完成小规模检查，再按课程统一题面设置 n、b 和重复次数。脚本默认时限为 2 小时，
+正式实验按实测耗时分批运行或调整 `#SBATCH -t` 时限。
 当前源码的默认参数如下，它们用于解释当前程序行为，不能替代课程正式要求：
 
 | 程序 | 当前驱动默认参数 |
