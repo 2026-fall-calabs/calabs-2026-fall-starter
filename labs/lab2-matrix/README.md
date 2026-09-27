@@ -28,6 +28,8 @@ A[i][j]  <=>  A[i * n + j]
 
 ## 2. 需要提交的内容
 
+源码通过当前 Lab 的交大云盘收集任务提交，步骤见 [作业提交说明](../../docs/作业提交说明.md)。
+
 提交：
 
 1. 完成后的 `src/mygemm.c`；
@@ -70,7 +72,7 @@ Using bundled portable cblas_dgemm reference backend
 
 ## 4. 获取和检查框架
 
-请从Canvas上下载实验所需的代码框架。
+请从教师发布的交大云盘链接下载实验框架。
 
 主要文件：
 
