@@ -88,7 +88,6 @@ Using bundled portable cblas_dgemm reference backend
 | `benchmarks/cache_part4.c` | 综合优化测试程序 | 否 |
 | `src/util.c`、`include/util.h` | 初始化、计时和正确性检查 | 否 |
 | `third_party/labblas/` | 内置参考 BLAS | 否 |
-| `scripts/run_all.sh` | 批量运行脚本 | 否 |
 
 评分时只考虑你的 `src/mygemm.c`，因此不要依赖对其他源文件的修改。
 
@@ -416,22 +415,6 @@ done
 如果最佳块大小不是 64，请同样替换这里的块大小。
 
 重复运行期间不要改变源代码、编译选项、矩阵规模或块大小。尽量关闭占用 CPU 的其他程序。
-
-### 8.7 完整批量检查
-
-所有函数完成后，可执行框架自带的默认批量测试：
-
-```bash
-bash scripts/run_all.sh mydata.txt
-```
-
-结果保存在：
-
-```text
-results/mydata.txt
-```
-
-默认批量测试规模较大，运行时间可能明显长于前面的快速测试。请在全部小规模测试通过后再运行。
 
 ## 9. 实验数据整理
 

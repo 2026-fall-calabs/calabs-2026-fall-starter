@@ -596,25 +596,6 @@ done
 报告按 README 第 9 节整理四张表和四类图：寄存器复用、循环次序、缓存块大小、综合优化。
 图中注明坐标轴、单位、n 和 b。块大小实验应包含两个候选值在 2048 下的确认结果。
 
-### 8.7 可选的默认批量检查（README §8.7）
-
-全部函数正确后，可以在已申请的计算节点运行：
-
-```bash
-bash scripts/run_all.sh mydata.txt
-```
-
-结果位于 `labs/lab2-matrix/results/mydata.txt`。此脚本读取相同的 `build/`，使用程序默认参数。
-寄存器规模为 66、126、258、510、1026、2046，与正式实验相同；Part 3 的 n/b 为 2000/10，
-Part 4 为 2040/60，这两项仍与正式实验参数不同。
-它用于额外批量检查，不能替代前面按 README 第 8.2～8.6 节收集的正式数据。
-批量脚本在已申请的计算节点运行。使用批处理方式时，返回登录节点并从课程根目录执行：
-
-```bash
-mkdir -p results
-sbatch slurm/lab2-8.7.slurm
-```
-
 ## 9. 下载结果（本地电脑）
 
 以下命令适用于 macOS、Linux 和安装了 OpenSSH 的 Windows PowerShell。
